@@ -23,3 +23,4 @@
  5. Alarm ring tone  - This mode will allow you to choose from the 21 ringtones that are available to you and it will play  the first 5 seconds of each ringtone as a preview.
 
 
+![alt tag](https://raw.github.com/bufo333/Arduino_Clock/blob/master/Arduino%20Clock_schem.jpg)
