@@ -20,6 +20,7 @@
 #include "Adafruit_LEDBackpack.h"
 #include "Adafruit_GFX.h"
 #include <avr/pgmspace.h>
+#include <EEPROM.h>
 #define isdigit(n) (n >= '0' && n <= '9')
 #define OCTAVE_OFFSET 0
 // Declare variables and instantiate objects
