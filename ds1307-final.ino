@@ -6,7 +6,8 @@
 * temperature and humidity settings. The program uses the millis() feature
 * to perform timed tasks without halting execution. The program will display
 * the time in 12 hour and 24 hour modes, display temperature and humidity,
-* as well as show the full calendar year.
+* as well as show the full calendar year. The code to decode the ringtones was 
+* written by Brett Hagman.
 *
 * written by John Burns
 *
