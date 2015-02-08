@@ -64,7 +64,7 @@ const char song_3[] PROGMEM = "Smurfs:d=32,o=5,b=200:4c#6,16p,4f#6,p,16c#6,p,8d#
 const char song_2[] PROGMEM = "MahnaMahna:d=16,o=6,b=125:c#,c.,b5,8a#.5,8f.,4g#,a#,g.,4d#,8p,c#,c.,b5,8a#.5,8f.,g#.,8a#.,4g,8p,c#,c.,b5,8a#.5,8f.,4g#,f,g.,8d#.,f,g.,8d#.,f,8g,8d#.,f,8g,d#,8c,a#5,8d#.,8d#.,4d#,8d#.";
 const char song_1[] PROGMEM = "LeisureSuit:d=16,o=6,b=56:f.5,f#.5,g.5,g#5,32a#5,f5,g#.5,a#.5,32f5,g#5,32a#5,g#5,8c#.,a#5,32c#,a5,a#.5,c#.,32a5,a#5,32c#,d#,8e,c#.,f.,f.,f.,f.,f,32e,d#,8d,a#.5,e,32f,e,32f,c#,d#.,c#";
 const char song_0[] PROGMEM = "MissionImp:d=16,o=6,b=95:32d,32d#,32d,32d#,32d,32d#,32d,32d#,32d,32d,32d#,32e,32f,32f#,32g,g,8p,g,8p,a#,p,c7,p,g,8p,g,8p,f,p,f#,p,g,8p,g,8p,a#,p,c7,p,g,8p,g,8p,f,p,f#,p,a#,g,2d,32p,a#,g,2c#,32p,a#,g,2c,a#5,8c,2p,32p,a#5,g5,2f#,32p,a#5,g5,2f,32p,a#5,g5,2e,d#,8d";
-const char *song_table[] ={
+const char *song_table[] ={"0",
   song_0,
   song_1,
   song_2,
@@ -123,7 +123,7 @@ void setup () {
   pinMode(tonePin, INPUT);
   // Assign default variable values.
   brightness = 15;
-  alarmTone=0;
+  alarmTone=8;
   strcpy_P(buf, (char*)(song_table[alarmTone]));
   setMode = false;
   smode = 0;
@@ -160,6 +160,7 @@ void loop () {
   }
   // Update displays
   DisplayAll();
+  CheckAlarm();
   // Poll the sensors ever second
   if (millis() - sensorTimer >= 1000UL) {
     GetTemp();
@@ -175,7 +176,7 @@ void DisplayAll() {
   static bool m0select;
   static bool m1select;
   static bool m2select;
-  byte colon;
+  static byte colon;
   now = rtc.now();
   byte minutes = now.minute();
   byte hours = now.hour();
@@ -198,7 +199,7 @@ void DisplayAll() {
         m2select = false;
         m0select = false;
       }
-      else if (smode == 2 || 3) {
+      else if (smode == 2 || 3 || 4) {
         m0select = !m0select;
         m2select = false;
         m1select = false;
@@ -237,7 +238,7 @@ void DisplayAll() {
     matrix1.setBrightness(brightness);
     matrix2.setBrightness(brightness);
 
-    if ( (!setMode && mode == 0) || (setMode && smode != 3)) {
+    if ( (!setMode && mode == 0) || (setMode && smode <3)) {
       matrix.writeDigitNum(0, (years / 1000) , m0select);
       matrix.writeDigitNum(1, (years / 100) % 10 , m0select);
       matrix.writeDigitNum(3, (years / 10) % 10, m0select);
@@ -262,6 +263,16 @@ void DisplayAll() {
       matrix.drawColon(false);
       matrix.writeDisplay();
     }
+    else if ((setMode && smode == 4)) {
+      matrix.writeDigitNum(0, (alarmTone / 1000) , m0select);
+      matrix.writeDigitNum(1, (alarmTone/100) %10 , m0select);
+      matrix.writeDigitNum(3, (alarmTone/10) %10,m0select);
+      matrix.writeDigitNum(4, alarmTone %10, m0select);
+      matrix.drawColon(false);
+      matrix.writeDisplay();
+      
+    }
+      
     if (!setMode && mode == 1) {
       int temp = tempF * 100.00;
       matrix1.writeDigitNum(0, temp / 1000 , m1select);
@@ -339,7 +350,7 @@ void ReadPinsSet() {
         SetAlarm('m');
       }
       else if (smode ==4) {
-        SetAlarmTone();
+        SetAlarmTone('m');
       }
     }
     if (minPinState == 1 && minPinLastState == 1) {
@@ -357,8 +368,9 @@ void ReadPinsSet() {
           SetAlarm('m');
         }
         else if (smode ==4) {
-          SetAlarmTone();
+          SetAlarmTone('m');
       }
+    }
     }
 
     if (hourPinState == 1 && hourPinLastState == 0 ) {
@@ -375,6 +387,9 @@ void ReadPinsSet() {
       }
       else if (smode == 3) {
         SetAlarm('h');
+      }
+      else if (smode ==4) {
+        SetAlarmTone('h');
       }
     }
     if (hourPinState == 1 && hourPinLastState == 1) {
@@ -407,6 +422,7 @@ void ReadPinsSet() {
     if (modePinState == 1 && modePinLastState == 1) {
       if (millis() - modePinTimer >= 3000UL) {
         setMode = !setMode;
+        smode=0;
         modePinTimer = millis();
        
      }
@@ -415,7 +431,7 @@ void ReadPinsSet() {
 
     buttonTimer = millis();
   }
-  } 
+  
 }
 
 void ReadPins() {
@@ -659,19 +675,21 @@ void GetTemp() {
 
 // Checks if the alarm should go off and activates the alarm tone.
 
-void SetAlarmTone() {
+void SetAlarmTone(char opt) {
   // Local variable declaration
 
-  
-  if (alarmTone + 1 <= 21) {
-   alarmTone += 1; 
-   strcpy_P(buf, (char*)(song_table[alarmTone]));
+  if (opt =='h') {
+   PlayAlarm(0);
   }
   else {
-    alarmTone = 0;
-    strcpy_P(buf, (char*)(song_table[alarmTone]));
+    if (alarmTone + 1 <=21) {
+    alarmTone +=1;
+    DisplayAll();
   }
-  PlayAlarm(1);
+  else {
+    alarmTone = 1;
+  }
+}
 }
 
 void CheckAlarm() {
@@ -687,7 +705,7 @@ void CheckAlarm() {
 
 void PlayAlarm(bool demo)
 {
-
+strcpy_P(buf, (char*)(song_table[alarmTone]));
 char *p = buf;  
 if ((smode==4 && setMode) || alarmSet) 
 {
@@ -752,7 +770,7 @@ if ((smode==4 && setMode) || alarmSet)
   while(*p)
   {
       alarmSet = digitalRead(alarmPin);
-      if ((demo && counter==10) || (!demo && !alarmSet)) return;
+      if ((!demo && !alarmSet)) return;
     // first, get note duration, if available
     num = 0;
     
