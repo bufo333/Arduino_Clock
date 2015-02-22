@@ -155,13 +155,13 @@ void loop () {
   // Detect if the Set Mode has been enabled if its not check the pin status.
   if (!setMode) {
     ReadPins();
+    CheckAlarm();
   }
   else {
     ReadPinsSet();
   }
   // Update displays
   DisplayAll();
-  CheckAlarm();
   // Poll the sensors ever second
   if (millis() - sensorTimer >= 1000UL) {
     GetTemp();
@@ -630,9 +630,12 @@ void GetHumid() {
   int haverage = 0;
   float hvoltage;
   static unsigned long humidTimer;
+  float refVolt = readVcc();
 
   if (millis() - humidTimer >= 10) {
     htotal = htotal - hreading[hindex];
+    analogRead(humidSensor);
+    analogRead(humidSensor);
     hreading[hindex] = analogRead(humidSensor);
     htotal = htotal + hreading[hindex];
     hindex += 1;
@@ -643,8 +646,8 @@ void GetHumid() {
     hindex = 0;
   }
   haverage = htotal / 100;
-  hvoltage = haverage * 5.0;
-  hvoltage /= 1024.0;
+  hvoltage = haverage * refVolt;
+  hvoltage /= 1023.0;
   trueRH = (((hvoltage / 5.0) - 0.16) / 0.0062) / 1.0546 - 0.00216 * tempC;
 
 }
@@ -656,9 +659,12 @@ void GetTemp() {
   static byte tindex = 0;
   static unsigned int ttotal = 0;
   int taverage = 0;
+  float refVolt = readVcc();
 
   if (millis() - tempTimer >= 10) {
     ttotal = ttotal - treading[tindex];
+    analogRead(tempSensor);
+    analogRead(tempSensor);
     treading[tindex] = analogRead(tempSensor);
     ttotal = ttotal + treading[tindex];
     tindex += 1;
@@ -668,8 +674,8 @@ void GetTemp() {
     tindex = 0;
   }
   taverage = ttotal / 100;
-  voltage = taverage * 5.0;
-  voltage /= 1024;
+  voltage = taverage * refVolt;
+  voltage /= 1023.0;
   tempC = (voltage - 0.5) * 100;
   tempF = (tempC * 9.0 / 5.0) + 32;
 }
@@ -860,5 +866,20 @@ if ((smode==4 && setMode) || alarmSet)
    counter+= 1; 
   }
 }
+}
+
+float readVcc() {
+  long result;
+  float volts;
+  // Read 1.1V reference against AVcc
+  ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  delay(2); // Wait for Vref to settle
+  ADCSRA |= _BV(ADSC); // Convert
+  while (bit_is_set(ADCSRA,ADSC));
+  result = ADCL;
+  result |= ADCH<<8;
+  result = 1125300L / result; // Back-calculate AVcc in mV
+  volts = result / 1000.0;
+  return volts;
 }
 
